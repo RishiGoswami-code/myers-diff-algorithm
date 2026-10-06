@@ -354,79 +354,50 @@ def changed_ranges(old, new):
     """
     Find the minimum changed character ranges between two strings.
 
-    Python indexes strings by Unicode code point, which matches
-    the assignment requirement.
+    Ranges use Unicode code-point indexes.
     """
 
     edits = myers(old, new)
 
-    old_ranges = []
-    new_ranges = []
-
-    old_pos = 0
-    new_pos = 0
-
-    old_start = None
-    old_end = None
-
-    new_start = None
-    new_end = None
-
-    def flush_old():
-        nonlocal old_start, old_end
-
-        if old_start is not None:
-            old_ranges.append(
-                (old_start, old_end)
-            )
-
-            old_start = None
-            old_end = None
-
-    def flush_new():
-        nonlocal new_start, new_end
-
-        if new_start is not None:
-            new_ranges.append(
-                (new_start, new_end)
-            )
-
-            new_start = None
-            new_end = None
+    old_changed = []
+    new_changed = []
 
     for edit in edits:
 
-        if edit[0] == "=":
-            flush_old()
-            flush_new()
+        if edit[0] == "-":
+            old_changed.append(edit[1])
 
-            old_pos += 1
-            new_pos += 1
+        elif edit[0] == "+":
+            new_changed.append(edit[1])
 
-        elif edit[0] == "-":
-            flush_new()
-
-            if old_start is None:
-                old_start = old_pos
-
-            old_end = old_pos + 1
-            old_pos += 1
-
-        else:
-            flush_old()
-
-            if new_start is None:
-                new_start = new_pos
-
-            new_end = new_pos + 1
-            new_pos += 1
-
-    flush_old()
-    flush_new()
-
-    def format_ranges(ranges):
-        if not ranges:
+    def make_ranges(positions):
+        if not positions:
             return "."
+
+        positions.sort()
+
+        ranges = []
+
+        start = positions[0]
+        end = positions[0] + 1
+
+        for position in positions[1:]:
+
+            # Touching characters belong to the same range.
+            if position <= end:
+                end = position + 1
+
+            else:
+                ranges.append(
+                    (start, end)
+                )
+
+                start = position
+                end = position + 1
+
+        ranges.append(
+            (start, end)
+        )
 
         return ",".join(
             f"{start}-{end}"
@@ -434,10 +405,9 @@ def changed_ranges(old, new):
         )
 
     return (
-        format_ranges(old_ranges),
-        format_ranges(new_ranges),
+        make_ranges(old_changed),
+        make_ranges(new_changed),
     )
-
 
 def print_lines_diff(a, b):
     script = line_diff(a, b)
