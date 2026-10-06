@@ -490,6 +490,7 @@ def print_highlight_diff(a, b):
             block.append(script[i])
             i += 1
 
+        # Separate deletions and insertions.
         deletes = [
             item[1]
             for item in block
@@ -502,46 +503,58 @@ def print_highlight_diff(a, b):
             if item[0] == "+"
         ]
 
-        # Part A output.
+        # The assignment requires all '-' lines
+        # to appear before '+' lines.
         for index in deletes:
             output.write(
                 b"-" + a[index] + b"\n"
             )
 
-        for index in inserts:
-            output.write(
-                b"+" + b[index] + b"\n"
-            )
-
-        # Pair the first deletion with the first insertion,
-        # second with second, etc.
+        # Pair:
+        #   1st '-' with 1st '+'
+        #   2nd '-' with 2nd '+'
+        #   etc.
+        #
+        # The '?' line must immediately follow
+        # its paired '+' line.
         pairs = min(
             len(deletes),
             len(inserts),
         )
 
-        for pair in range(pairs):
+        for pair, index in enumerate(inserts):
 
-            old_line = a[deletes[pair]].decode(
-                "utf-8"
-            )
-
-            new_line = b[inserts[pair]].decode(
-                "utf-8"
-            )
-
-            old_ranges, new_ranges = changed_ranges(
-                old_line,
-                new_line,
-            )
-
-            highlight = (
-                f"? {old_ranges} | {new_ranges}\n"
-            )
-
+            # Print the inserted line.
             output.write(
-                highlight.encode("utf-8")
+                b"+" + b[index] + b"\n"
             )
+
+            # Only paired '+' lines get a '?'
+            # line. Unpaired '+' lines do not.
+            if pair < pairs:
+
+                old_line = a[
+                    deletes[pair]
+                ].decode("utf-8")
+
+                new_line = b[index].decode(
+                    "utf-8"
+                )
+
+                old_ranges, new_ranges = (
+                    changed_ranges(
+                        old_line,
+                        new_line,
+                    )
+                )
+
+                highlight = (
+                    f"? {old_ranges} | {new_ranges}\n"
+                )
+
+                output.write(
+                    highlight.encode("utf-8")
+                )
 
 
 def main() -> int:
